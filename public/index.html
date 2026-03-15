@@ -168,7 +168,7 @@
   #goto-today-btn:hover { border-color: #d4a017; }
   #slider-hint {
     font-size: 0.58rem;
-    color: #334;
+    color: #aab;
     letter-spacing: 0.06em;
     flex: 1;
     text-align: center;
@@ -187,7 +187,7 @@
   }
   .key-label {
     font-size: 0.58rem;
-    color: #446;
+    color: #aab;
     letter-spacing: 0.05em;
     margin-right: 4px;
   }
@@ -224,6 +224,28 @@
     text-transform: uppercase;
     flex: 1;
     text-align: center;
+  }
+
+  /* ---- Full-screen vertical lines ---- */
+  #line-today, #line-selected {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    width: 2px;
+    pointer-events: none;
+    z-index: 5;
+    display: none;
+  }
+  #line-today {
+    background: repeating-linear-gradient(
+      to bottom,
+      #d4a017 0px, #d4a017 5px,
+      transparent 5px, transparent 10px
+    );
+    opacity: 0.5;
+  }
+  #line-selected {
+    background: rgba(255,255,255,0.35);
   }
 
   /* ---- Splash ---- */
@@ -370,6 +392,10 @@
     <span class="key-swatch" style="background:#006400;"></span><span class="key-label">Bullish</span>
   </div>
 </div>
+
+<!-- Full-screen vertical lines -->
+<div id="line-today"></div>
+<div id="line-selected"></div>
 
 <!-- Slider canvas -->
 <div id="slider-wrap">
@@ -972,6 +998,11 @@ function renderSlider() {
     sliderCtx.stroke();
   }
 
+  // Full-screen overlay lines
+  var sliderRect = sliderCanvas.getBoundingClientRect();
+  var lineToday    = document.getElementById('line-today');
+  var lineSelected = document.getElementById('line-selected');
+
   // Today line — gold dashed
   var todayStr = (function() {
     var t = new Date();
@@ -994,6 +1025,10 @@ function renderSlider() {
     sliderCtx.lineTo(tx, h - 10);
     sliderCtx.stroke();
     sliderCtx.restore();
+    lineToday.style.display = 'block';
+    lineToday.style.left = (sliderRect.left + tx) + 'px';
+  } else {
+    lineToday.style.display = 'none';
   }
 
   // Selected day line — white solid + triangle handle
@@ -1004,6 +1039,8 @@ function renderSlider() {
     }
     if (idx >= 0) {
       var hx = ((idx + 0.5) / n) * w;
+      lineSelected.style.display = 'block';
+      lineSelected.style.left = (sliderRect.left + hx) + 'px';
       sliderCtx.strokeStyle = 'rgba(255,255,255,0.7)';
       sliderCtx.lineWidth = 1.5;
       sliderCtx.beginPath();
@@ -1017,6 +1054,8 @@ function renderSlider() {
       sliderCtx.lineTo(hx, 8);
       sliderCtx.closePath();
       sliderCtx.fill();
+    } else {
+      lineSelected.style.display = 'none';
     }
   }
 }

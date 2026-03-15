@@ -24,6 +24,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from astro_data import build_snapshot, build_chart, snapshot_from_chart, build_planet_data
 from scoring_model import score, score_all
@@ -43,6 +44,15 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+@app.get("/")
+def root():
+    html_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "public", "index.html"
+    )
+    return FileResponse(html_path, media_type="text/html")
+
 
 @app.get("/api/health")
 def health():

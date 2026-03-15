@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sheel's Almanac</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #080818;
+    color: #ccc;
+    font-family: monospace;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    user-select: none;
+  }
+
+  /* ---- Header ---- */
+  #header {
+    background: #0a0a1e;
+    border-bottom: 1px solid #1a1a3a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    height: 52px;
+  }
+  #header-left { display: flex; flex-direction: column; }
+  #title {
+    font-size: 1.15rem;
+    font-weight: bold;
+    color: #d4a017;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  #subtitle {
+    font-size: 0.62rem;
+    color: #556;
+    letter-spacing: 0.12em;
+    margin-top: 1px;
+  }
+  #timeframe-btns {
+    display: flex;
+    gap: 6px;
+  }
+  .tf-btn {
+    background: #12122a;
+    border: 1px solid #2a2a4a;
+    color: #778;
+    font-family: monospace;
+    font-size: 0.72rem;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+    letter-spacing: 0.06em;
+  }
+  .tf-btn:hover { border-color: #4a4a7a; color: #aab; }
+  .tf-btn.active {
+    background: #1e1e40;
+    border-color: #5050a0;
+    color: #d4a017;
+  }
+
+  /* ---- Sky canvas ---- */
+  #sky-wrap {
+    position: relative;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #sky-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8,8,24,0.7);
+    color: #556;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #loading-overlay.visible { opacity: 1; }
+  #error-msg {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(100,20,20,0.85);
+    color: #faa;
+    font-size: 0.72rem;
+    padding: 4px 14px;
+    border-radius: 3px;
+    display: none;
+  }
+  #tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(10,10,30,0.92);
+    border: 1px solid #2a2a5a;
+    color: #aac;
+    font-size: 0.68rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    display: none;
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  /* ---- Score bar ---- */
+  #score-bar {
+    background: #0a0a1e;
+    border-top: 1px solid #14143a;
+    border-bottom: 1px solid #14143a;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+  }
+  #score-date { color: #446; }
+  #score-tf { color: #668; text-transform: uppercase; }
+  #score-value { color: #aac; font-weight: bold; font-size: 0.85rem; }
+  #score-label { font-weight: bold; }
+  .label-bullish { color: #4c8; }
+  .label-bearish { color: #f55; }
+  .label-neutral  { color: #aac; }
+
+  /* ---- Slider wrap ---- */
+  #slider-wrap {
+    flex-shrink: 0;
+    background: #060614;
+    padding: 4px 0 0;
+    height: 72px;
+  }
+  #slider-canvas {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  /* ---- Footer ---- */
+  #footer {
+    background: #060614;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+    flex-shrink: 0;
+    border-top: 1px solid #0e0e26;
+  }
+  .month-label {
+    font-size: 0.55rem;
+    color: #335;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    flex: 1;
+    text-align: center;
+  }
+
+  /* ---- Splash ---- */
+  #splash {
+    position: fixed;
+    inset: 0;
+    background: #050510;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.6s ease;
+  }
+  #splash.fade-out { opacity: 0; pointer-events: none; }
+
+  #splash-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #splash-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #d4a017;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  #splash-sub {
+    font-size: 0.72rem;
+    color: #446;
+    letter-spacing: 0.18em;
+    margin-bottom: 28px;
+  }
+  #splash-prompt {
+    font-size: 0.7rem;
+    color: #558;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  #splash-btns {
+    display: flex;
+    gap: 14px;
+  }
+  .splash-tf {
+    background: #0d0d22;
+    border: 1px solid #2a2a4a;
+    color: #aab;
+    font-family: monospace;
+    padding: 18px 28px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    min-width: 110px;
+  }
+  .splash-tf:hover {
+    border-color: #d4a017;
+    background: #131328;
+    color: #d4a017;
+  }
+  .splash-tf-name {
+    font-size: 1rem;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+  }
+  .splash-tf-desc {
+    font-size: 0.6rem;
+    color: #557;
+    letter-spacing: 0.08em;
+  }
+  .splash-tf:hover .splash-tf-desc { color: #886633; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div id="header-left">
+    <span id="title">Sheel's Almanac</span>
+    <span id="subtitle">astrological market sentiment</span>
+  </div>
+  <div id="timeframe-btns">
+    <button class="tf-btn" data-tf="short">Short</button>
+    <button class="tf-btn" data-tf="mid">Mid</button>
+    <button class="tf-btn" data-tf="long">Long</button>
+    <button class="tf-btn" id="sound-btn" title="Toggle sound">&#9836;</button>
+  </div>
+</div>
+
+<audio id="ambient-audio" src="sound.mp3" loop preload="auto"></audio>
+
+<!-- Intro splash -->
+<div id="splash">
+  <div id="splash-inner">
+    <div id="splash-title">Sheel's Almanac</div>
+    <div id="splash-sub">astrological market sentiment</div>
+    <div id="splash-prompt">select your trade window</div>
+    <div id="splash-btns">
+      <button class="splash-tf" data-tf="short">
+        <span class="splash-tf-name">Short</span>
+        <span class="splash-tf-desc">1 – 5 days</span>
+      </button>
+      <button class="splash-tf" data-tf="mid">
+        <span class="splash-tf-name">Mid</span>
+        <span class="splash-tf-desc">1 – 8 weeks</span>
+      </button>
+      <button class="splash-tf" data-tf="long">
+        <span class="splash-tf-name">Long</span>
+        <span class="splash-tf-desc">months – years</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Sky canvas -->
+<div id="sky-wrap">
+  <canvas id="sky-canvas"></canvas>
+  <div id="loading-overlay">loading...</div>
+  <div id="error-msg"></div>
+  <div id="tooltip"></div>
+</div>
+
+<!-- Score bar -->
+<div id="score-bar">
+  <span id="score-date">--</span>
+  <span id="score-tf">SHORT</span>
+  <span id="score-value">--</span>
+  <span id="score-label">--</span>
+</div>
+
+<!-- Slider canvas -->
+<div id="slider-wrap">
+  <canvas id="slider-canvas" height="52"></canvas>
+</div>
+
+<!-- Footer month labels -->
+<div id="footer">
+  <span class="month-label">Jan</span>
+  <span class="month-label">Feb</span>
+  <span class="month-label">Mar</span>
+  <span class="month-label">Apr</span>
+  <span class="month-label">May</span>
+  <span class="month-label">Jun</span>
+  <span class="month-label">Jul</span>
+  <span class="month-label">Aug</span>
+  <span class="month-label">Sep</span>
+  <span class="month-label">Oct</span>
+  <span class="month-label">Nov</span>
+  <span class="month-label">Dec</span>
+</div>
+
+<script>
+// =============================================================================
+// State
+// =============================================================================
+var activeTf = 'short';
+var snapshotData = null;
+var yearData = null;
+var currentDate = null;
+var sliderDragging = false;
+var planetScreenPositions = [];
+var starFieldCanvas = null;
+
+var skyCanvas = document.getElementById('sky-canvas');
+var skyCtx = skyCanvas.getContext('2d');
+var DPR = window.devicePixelRatio || 1;
+
+var sliderCanvas = document.getElementById('slider-canvas');
+var sliderCtx = sliderCanvas.getContext('2d');
+
+// Track canvas logical size
+var skyW = 0;
+var skyH = 0;
+var sliderW = 0;
+
+// =============================================================================
+// Seeded PRNG (mulberry32)
+// =============================================================================
+function makeRng(seed) {
+  var s = seed >>> 0;
+  return function() {
+    s += 0x6D2B79F5;
+    var t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// =============================================================================
+// Zodiac constellation data
+// =============================================================================
+var ZODIAC = [
+  { name:'Aries',       sym:'\u2648', lon:15,  lat:10, stars:[[-1,0],[2,-1],[5,0],[8,1]],                                                                                  lines:[[0,1],[1,2],[2,3]], bright:[0] },
+  { name:'Taurus',      sym:'\u2649', lon:45,  lat:6,  stars:[[0,0],[-3,2],[-5,1],[-7,3],[-5,-1],[8,10],[11,4],[4,-7]],                                                   lines:[[0,1],[1,2],[2,3],[2,4],[0,4],[3,6],[0,7]], bright:[0,5] },
+  { name:'Gemini',      sym:'\u264a', lon:75,  lat:12, stars:[[-5,6],[5,6],[-5,3],[5,2],[-5,0],[5,-1],[-5,-3],[5,-4]],                                                     lines:[[0,2],[2,4],[4,6],[1,3],[3,5],[5,7],[6,7],[4,3]], bright:[1] },
+  { name:'Cancer',      sym:'\u264b', lon:105, lat:8,  stars:[[0,0],[0,4],[-5,-2],[5,-2],[0,8]],                                                                           lines:[[0,1],[0,2],[0,3],[1,4]], bright:[] },
+  { name:'Leo',         sym:'\u264c', lon:135, lat:9,  stars:[[-4,-5],[-4,2],[-7,5],[-10,6],[-9,9],[-5,9],[-2,6],[7,-4],[3,-3],[1,-1]],                                   lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,1],[0,9],[9,8],[8,7]], bright:[0,7] },
+  { name:'Virgo',       sym:'\u264d', lon:165, lat:2,  stars:[[0,-9],[-2,0],[0,5],[-5,7],[-9,3],[5,5],[8,2],[5,0]],                                                        lines:[[0,1],[1,2],[2,3],[3,4],[2,5],[5,6],[6,7],[7,1]], bright:[0] },
+  { name:'Libra',       sym:'\u264e', lon:195, lat:8,  stars:[[0,0],[-6,-2],[6,-2],[0,6],[-3,-6]],                                                                         lines:[[0,1],[0,2],[0,3],[1,2],[1,4]], bright:[2] },
+  { name:'Scorpius',    sym:'\u264f', lon:225, lat:-4, stars:[[0,0],[-7,5],[-5,7],[-3,9],[-9,3],[3,-2],[5,-4],[7,-6],[9,-8],[10,-5],[12,-3],[13,-2]],                      lines:[[3,2],[2,1],[1,0],[0,4],[0,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11]], bright:[0,10] },
+  { name:'Sagittarius', sym:'\u2650', lon:255, lat:-5, stars:[[0,0],[0,-5],[0,6],[-5,-2],[7,6],[9,2],[5,-3],[-4,2]],                                                       lines:[[1,0],[0,2],[2,4],[4,5],[5,6],[6,1],[0,7],[7,3],[7,1]], bright:[1,4] },
+  { name:'Capricornus', sym:'\u2651', lon:285, lat:-8, stars:[[-8,2],[-7,0],[-4,-2],[0,0],[2,2],[5,3],[7,3],[7,-1],[4,-3]],                                                lines:[[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,2],[0,2]], bright:[1,6] },
+  { name:'Aquarius',    sym:'\u2652', lon:315, lat:-5, stars:[[-5,4],[0,6],[5,3],[2,0],[1,-3],[0,-6],[-2,-8],[2,-8],[5,-6],[5,-3]],                                        lines:[[0,1],[1,2],[1,3],[3,4],[4,5],[5,6],[5,7],[7,8],[8,9],[9,4]], bright:[1] },
+  { name:'Pisces',      sym:'\u2653', lon:345, lat:7,  stars:[[8,3],[10,5],[12,3],[10,1],[4,0],[2,-2],[0,-4],[-4,-4],[-8,-2],[-10,2],[-8,5],[-5,5],[-3,2]],               lines:[[0,1],[1,2],[2,3],[3,0],[0,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,7]], bright:[4] },
+];
+
+// =============================================================================
+// Planet config
+// =============================================================================
+var PLANET_CONFIG = {
+  sun:     { sym: '\u2609', color: '#FFD700', radius: 8,  label: 'Sun'     },
+  moon:    { sym: '\u263d', color: '#E8E0D0', radius: 7,  label: 'Moon'    },
+  mercury: { sym: '\u263f', color: '#C8A862', radius: 5,  label: 'Mercury' },
+  venus:   { sym: '\u2640', color: '#FF9955', radius: 6,  label: 'Venus'   },
+  mars:    { sym: '\u2642', color: '#FF5544', radius: 6,  label: 'Mars'    },
+  jupiter: { sym: '\u2643', color: '#FFAA44', radius: 7,  label: 'Jupiter' },
+  saturn:  { sym: '\u2644', color: '#C8B852', radius: 6,  label: 'Saturn'  },
+  uranus:  { sym: '\u26e2', color: '#44DDFF', radius: 5,  label: 'Uranus'  },
+  neptune: { sym: '\u2646', color: '#4488FF', radius: 5,  label: 'Neptune' },
+  pluto:   { sym: '\u2647', color: '#AA44BB', radius: 4,  label: 'Pluto'   },
+};
+
+var PLANET_ORDER = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+
+// Mapping from planet name to score signal key
+var PLANET_SIGNAL_MAP = {
+  mercury: 'mercury_status',
+  venus:   'venus_status',
+  mars:    'mars_status',
+  jupiter: 'jupiter_status',
+  saturn:  'saturn_status',
+};
+
+// =============================================================================
+// Coordinate helpers
+// =============================================================================
+function lonToX(lon, w) {
+  return (lon / 360) * w;
+}
+
+function latToY(lat, h) {
+  var baseline = h * 0.55;
+  return baseline - lat * (h / 90);
+}
+
+// =============================================================================
+// Star field — generated once with seeded PRNG
+// =============================================================================
+function buildStarField(w, h) {
+  var offscreen = document.createElement('canvas');
+  offscreen.width  = Math.round(w);
+  offscreen.height = Math.round(h);
+  var ctx = offscreen.getContext('2d');
+
+  ctx.clearRect(0, 0, w, h);
+
+  var rng = makeRng(0xDEADBEEF);
+  var COUNT = 300;
+
+  for (var i = 0; i < COUNT; i++) {
+    var x   = rng() * w;
+    var y   = rng() * h;
+    var r   = 0.5 + rng() * 2.0;
+    var op  = 0.3 + rng() * 0.7;
+    var tint = rng();
+
+    var color;
+    if (tint < 0.3)       color = 'rgba(180,200,255,' + op.toFixed(2) + ')';
+    else if (tint < 0.6)  color = 'rgba(255,255,220,' + op.toFixed(2) + ')';
+    else                  color = 'rgba(220,220,255,' + op.toFixed(2) + ')';
+
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  return offscreen;
+}
+
+// =============================================================================
+// Milky Way band
+// =============================================================================
+function drawMilkyWay(ctx, w, h) {
+  var grad = ctx.createLinearGradient(0, h, w, 0);
+  grad.addColorStop(0,   'rgba(60,50,100,0)');
+  grad.addColorStop(0.3, 'rgba(80,70,130,0.07)');
+  grad.addColorStop(0.5, 'rgba(100,90,160,0.07)');
+  grad.addColorStop(0.7, 'rgba(80,70,130,0.07)');
+  grad.addColorStop(1,   'rgba(60,50,100,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+}
+
+// =============================================================================
+// Ecliptic band
+// =============================================================================
+function drawEcliptic(ctx, w, h) {
+  var y = h * 0.55;
+
+  var grad = ctx.createLinearGradient(0, y - 6, 0, y + 6);
+  grad.addColorStop(0,   'rgba(80,60,180,0)');
+  grad.addColorStop(0.5, 'rgba(80,60,180,0.2)');
+  grad.addColorStop(1,   'rgba(80,60,180,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, y - 6, w, 12);
+
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(w, y);
+  ctx.strokeStyle = 'rgba(80,60,180,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 4;
+  ctx.shadowColor = 'rgba(100,80,220,0.4)';
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+// =============================================================================
+// Zodiac constellations
+// =============================================================================
+function drawConstellations(ctx, w, h) {
+  var DEG_TO_PX_LON = w / 360;
+  var DEG_TO_PX_LAT = h / 90;
+  var baseline = h * 0.55;
+
+  for (var ci = 0; ci < ZODIAC.length; ci++) {
+    var cons = ZODIAC[ci];
+
+    // Compute screen positions of each star
+    var screenStars = cons.stars.map(function(s) {
+      var dLon = s[0], dLat = s[1];
+      var lon = cons.lon + dLon;
+      var lat = cons.lat + dLat;
+      var x = lon * DEG_TO_PX_LON;
+      var y = baseline - lat * DEG_TO_PX_LAT;
+      return { x: x, y: y, lon: lon };
+    });
+
+    // Draw at primary position + wrap offsets for edge constellations
+    var offsets = [0];
+    if (cons.lon < 30)  offsets.push(360);
+    if (cons.lon > 330) offsets.push(-360);
+
+    for (var oi = 0; oi < offsets.length; oi++) {
+      var lonOffset = offsets[oi];
+      var ox = lonOffset * DEG_TO_PX_LON;
+
+      // Constellation lines
+      ctx.strokeStyle = 'rgba(80,120,255,0.35)';
+      ctx.lineWidth = 1;
+      ctx.shadowBlur = 0;
+      for (var li = 0; li < cons.lines.length; li++) {
+        var ia = cons.lines[li][0], ib = cons.lines[li][1];
+        ctx.beginPath();
+        ctx.moveTo(screenStars[ia].x + ox, screenStars[ia].y);
+        ctx.lineTo(screenStars[ib].x + ox, screenStars[ib].y);
+        ctx.stroke();
+      }
+
+      // Stars
+      for (var si = 0; si < cons.stars.length; si++) {
+        var sx = screenStars[si].x;
+        var sy = screenStars[si].y;
+        var isBright = cons.bright.indexOf(si) >= 0;
+
+        if (isBright) {
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = 'rgba(200,220,255,0.6)';
+          ctx.beginPath();
+          ctx.arc(sx + ox, sy, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255,250,220,0.95)';
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.beginPath();
+          ctx.arc(sx + ox, sy, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(180,200,255,0.7)';
+          ctx.fill();
+        }
+      }
+
+      // Symbol and name
+      var centerX = cons.lon * DEG_TO_PX_LON + ox;
+      var centerY = baseline - cons.lat * DEG_TO_PX_LAT;
+
+      ctx.font = '14px monospace';
+      ctx.fillStyle = 'rgba(150,160,220,0.5)';
+      ctx.textAlign = 'center';
+      ctx.fillText(cons.sym, centerX, centerY - 18);
+
+      ctx.font = '10px monospace';
+      ctx.fillStyle = 'rgba(120,140,200,0.6)';
+      ctx.fillText(cons.name, centerX, centerY + 24);
+    }
+  }
+
+  ctx.textAlign = 'left';
+}
+
+// =============================================================================
+// Moon phase rendering
+// =============================================================================
+function drawMoon(ctx, cx, cy, r, phaseAngle) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Dark fill
+  ctx.fillStyle = '#0d0d20';
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+  // Lit portion
+  ctx.fillStyle = '#dddbc8';
+  var a = phaseAngle * Math.PI / 180;
+  var xr = -r * Math.cos(a);
+  ctx.beginPath();
+  if (phaseAngle < 180) {
+    ctx.arc(cx, cy, r, Math.PI / 2, -Math.PI / 2);
+    ctx.ellipse(cx, cy, Math.abs(xr) || 0.01, r, 0, -Math.PI / 2, Math.PI / 2, xr > 0);
+  } else {
+    ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2);
+    ctx.ellipse(cx, cy, Math.abs(xr) || 0.01, r, 0, Math.PI / 2, -Math.PI / 2, xr <= 0);
+  }
+  ctx.fill();
+  ctx.restore();
+
+  // Outer glow
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = 'rgba(220,220,180,0.5)';
+  ctx.strokeStyle = 'rgba(200,200,180,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+// =============================================================================
+// Get planet score tint for active timeframe
+// =============================================================================
+function getPlanetTint(planetName) {
+  if (!snapshotData) return null;
+  var signalKey = PLANET_SIGNAL_MAP[planetName];
+  if (!signalKey) return null;
+
+  var scoresObj = snapshotData.scores;
+  if (!scoresObj || !scoresObj[activeTf]) return null;
+
+  var breakdown = scoresObj[activeTf].breakdown;
+  if (!breakdown) return null;
+
+  for (var i = 0; i < breakdown.length; i++) {
+    if (breakdown[i].signal === signalKey) {
+      var c = breakdown[i].contribution;
+      if (c > 0.02)  return 'green';
+      if (c < -0.02) return 'red';
+      return null;
+    }
+  }
+  return null;
+}
+
+// =============================================================================
+// Draw planets
+// =============================================================================
+function drawPlanets(ctx, w, h) {
+  if (!snapshotData || !snapshotData.planets) return;
+
+  var planets = snapshotData.planets;
+  planetScreenPositions = [];
+
+  // Track x positions for vertical staggering
+  var usedX = [];
+
+  for (var pi = 0; pi < PLANET_ORDER.length; pi++) {
+    var name = PLANET_ORDER[pi];
+    var pData = planets[name];
+    if (!pData) continue;
+    var cfg = PLANET_CONFIG[name];
+
+    var lon = pData.lon;
+    var x = lonToX(lon, w);
+    var baseY = latToY(0, h);
+
+    // Stagger: shift vertically if too close to a previous planet
+    var stagger = 0;
+    for (var ui = 0; ui < usedX.length; ui++) {
+      if (Math.abs(x - usedX[ui].x) < 22) {
+        stagger = usedX[ui].stagger - 30;
+        break;
+      }
+    }
+    usedX.push({ x: x, stagger: stagger });
+
+    var y = baseY + stagger;
+
+    // Determine glow tint
+    var tint = getPlanetTint(name);
+    var glowColor = cfg.color;
+    if (tint === 'green') glowColor = '#44ff88';
+    else if (tint === 'red') glowColor = '#ff4444';
+
+    // Draw planet (Moon special case)
+    if (name === 'moon') {
+      var phaseAngle = pData.phase_angle || 0;
+      drawMoon(ctx, x, y, cfg.radius, phaseAngle);
+    } else {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = glowColor + 'cc';
+      ctx.beginPath();
+      ctx.arc(x, y, cfg.radius, 0, Math.PI * 2);
+      ctx.fillStyle = cfg.color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Retrograde label
+    if (pData.retrograde) {
+      ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = '#ff8822';
+      ctx.textAlign = 'center';
+      ctx.shadowBlur = 0;
+      ctx.fillText('Rx', x, y - cfg.radius - 4);
+    }
+
+    // Planet symbol
+    ctx.font = '11px monospace';
+    ctx.fillStyle = cfg.color;
+    ctx.textAlign = 'center';
+    ctx.shadowBlur = 0;
+    ctx.fillText(cfg.sym, x, y + cfg.radius + 12);
+
+    // Sign label
+    ctx.font = '8px monospace';
+    ctx.fillStyle = 'rgba(150,160,200,0.7)';
+    ctx.fillText(pData.sign ? pData.sign.slice(0,3) : '', x, y + cfg.radius + 22);
+
+    // Store for tooltip
+    planetScreenPositions.push({
+      name: name,
+      x: x,
+      y: y,
+      r: cfg.radius + 8,
+      label: cfg.label,
+      sign: pData.sign,
+      retrograde: pData.retrograde
+    });
+  }
+
+  ctx.textAlign = 'left';
+  ctx.shadowBlur = 0;
+}
+
+// =============================================================================
+// Draw conjunction lines
+// =============================================================================
+function drawConjunctionLines(ctx, w, h) {
+  if (!snapshotData || !snapshotData.snapshot) return;
+  var cycle = snapshotData.snapshot.outer_planet_cycle;
+  if (!cycle || cycle === 'none') return;
+
+  var parts = cycle.split('_');
+  if (parts.length < 3) return;
+  var pA = parts[0];
+  var pB = parts[1];
+
+  var planets = snapshotData.planets;
+  if (!planets || !planets[pA] || !planets[pB]) return;
+
+  var xA = lonToX(planets[pA].lon, w);
+  var xB = lonToX(planets[pB].lon, w);
+  var baselineY = latToY(0, h);
+
+  // Find stagger offsets from stored positions
+  var staggerA = 0, staggerB = 0;
+  for (var pi = 0; pi < planetScreenPositions.length; pi++) {
+    if (planetScreenPositions[pi].name === pA) staggerA = planetScreenPositions[pi].y - baselineY;
+    if (planetScreenPositions[pi].name === pB) staggerB = planetScreenPositions[pi].y - baselineY;
+  }
+
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(255,215,0,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = 'rgba(255,215,0,0.3)';
+  ctx.beginPath();
+  ctx.moveTo(xA, baselineY + staggerA);
+  ctx.lineTo(xB, baselineY + staggerB);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// =============================================================================
+// Canvas sizing utility
+// =============================================================================
+function resizeSkyCanvas() {
+  var wrap = document.getElementById('sky-wrap');
+  var w = wrap.clientWidth;
+  var h = wrap.clientHeight;
+  var pw = Math.round(w * DPR);
+  var ph = Math.round(h * DPR);
+  if (skyCanvas.width !== pw || skyCanvas.height !== ph) {
+    skyCanvas.width  = pw;
+    skyCanvas.height = ph;
+    skyCanvas.style.width  = w + 'px';
+    skyCanvas.style.height = h + 'px';
+    // Reset transform then scale
+    skyCtx.setTransform(1, 0, 0, 1, 0, 0);
+    skyCtx.scale(DPR, DPR);
+    skyW = w;
+    skyH = h;
+    starFieldCanvas = null;
+    return true;
+  }
+  return false;
+}
+
+function resizeSliderCanvas() {
+  var wrap = document.getElementById('slider-wrap');
+  var w = wrap.clientWidth;
+  var h = 52;
+  var pw = Math.round(w * DPR);
+  var ph = Math.round(h * DPR);
+  if (sliderCanvas.width !== pw || sliderCanvas.height !== ph) {
+    sliderCanvas.width  = pw;
+    sliderCanvas.height = ph;
+    sliderCanvas.style.width  = w + 'px';
+    sliderCanvas.style.height = h + 'px';
+    sliderCtx.setTransform(1, 0, 0, 1, 0, 0);
+    sliderCtx.scale(DPR, DPR);
+    sliderW = w;
+    return true;
+  }
+  return false;
+}
+
+// =============================================================================
+// Main sky render
+// =============================================================================
+function renderSky() {
+  resizeSkyCanvas();
+  var w = skyW || document.getElementById('sky-wrap').clientWidth;
+  var h = skyH || document.getElementById('sky-wrap').clientHeight;
+  if (!w || !h) return;
+
+  skyCtx.clearRect(0, 0, w, h);
+
+  // Background
+  skyCtx.fillStyle = '#080818';
+  skyCtx.fillRect(0, 0, w, h);
+
+  // Milky Way
+  drawMilkyWay(skyCtx, w, h);
+
+  // Star field (generated once per canvas size)
+  if (!starFieldCanvas) {
+    starFieldCanvas = buildStarField(w, h);
+  }
+  skyCtx.drawImage(starFieldCanvas, 0, 0);
+
+  // Ecliptic
+  drawEcliptic(skyCtx, w, h);
+
+  // Constellations
+  drawConstellations(skyCtx, w, h);
+
+  // Conjunction lines (under planets)
+  drawConjunctionLines(skyCtx, w, h);
+
+  // Planets
+  drawPlanets(skyCtx, w, h);
+}
+
+// =============================================================================
+// Slider render
+// =============================================================================
+function getMonthStarts(year) {
+  var isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  var dims = [31, isLeap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  var starts = [];
+  var acc = 0;
+  for (var m = 0; m < 12; m++) {
+    if (m > 0) starts.push(acc);
+    acc += dims[m];
+  }
+  return starts;
+}
+
+function renderSlider() {
+  resizeSliderCanvas();
+  var w = sliderW || document.getElementById('slider-wrap').clientWidth;
+  var h = 52;
+  if (!w) return;
+
+  sliderCtx.clearRect(0, 0, w, h);
+
+  if (!yearData || !yearData.days || yearData.days.length === 0) {
+    sliderCtx.fillStyle = '#111122';
+    sliderCtx.fillRect(0, 0, w, h);
+    return;
+  }
+
+  var days = yearData.days;
+  var n = days.length;
+  var colW = w / n;
+
+  for (var i = 0; i < n; i++) {
+    var dayScore = days[i][activeTf] || 0;
+    var hue = ((dayScore + 1) / 2) * 120;
+    sliderCtx.fillStyle = 'hsl(' + hue.toFixed(1) + ', 70%, 40%)';
+    sliderCtx.fillRect(i * colW, 0, colW + 0.5, h - 10);
+  }
+
+  // Month dividers
+  var yr = yearData.year || new Date().getFullYear();
+  var monthStarts = getMonthStarts(yr);
+  sliderCtx.strokeStyle = 'rgba(0,0,0,0.4)';
+  sliderCtx.lineWidth = 1;
+  for (var mi = 0; mi < monthStarts.length; mi++) {
+    var mx = (monthStarts[mi] / n) * w;
+    sliderCtx.beginPath();
+    sliderCtx.moveTo(mx, 0);
+    sliderCtx.lineTo(mx, h - 10);
+    sliderCtx.stroke();
+  }
+
+  // Handle triangle at current day
+  if (currentDate) {
+    var idx = -1;
+    for (var di = 0; di < days.length; di++) {
+      if (days[di].date === currentDate) { idx = di; break; }
+    }
+    if (idx >= 0) {
+      var hx = ((idx + 0.5) / n) * w;
+      sliderCtx.fillStyle = '#ffffff';
+      sliderCtx.beginPath();
+      sliderCtx.moveTo(hx - 6, 0);
+      sliderCtx.lineTo(hx + 6, 0);
+      sliderCtx.lineTo(hx, 8);
+      sliderCtx.closePath();
+      sliderCtx.fill();
+    }
+  }
+}
+
+// =============================================================================
+// Score bar update
+// =============================================================================
+function updateScoreBar() {
+  var dateEl  = document.getElementById('score-date');
+  var tfEl    = document.getElementById('score-tf');
+  var valEl   = document.getElementById('score-value');
+  var labelEl = document.getElementById('score-label');
+
+  if (!snapshotData) {
+    dateEl.textContent  = '--';
+    tfEl.textContent    = activeTf.toUpperCase();
+    valEl.textContent   = '--';
+    labelEl.textContent = '--';
+    return;
+  }
+
+  var displayDate = currentDate || (snapshotData.timestamp ? snapshotData.timestamp.slice(0, 10) : '--');
+  dateEl.textContent = displayDate;
+  tfEl.textContent   = activeTf.toUpperCase();
+
+  var scoresObj = snapshotData.scores;
+  if (scoresObj && scoresObj[activeTf]) {
+    var s = scoresObj[activeTf];
+    valEl.textContent   = (s.total >= 0 ? '+' : '') + s.total.toFixed(3);
+    labelEl.textContent = s.label;
+
+    labelEl.className = '';
+    var lbl = s.label.toLowerCase();
+    if (lbl.indexOf('bullish') >= 0)       labelEl.classList.add('label-bullish');
+    else if (lbl.indexOf('bearish') >= 0)  labelEl.classList.add('label-bearish');
+    else                                   labelEl.classList.add('label-neutral');
+  }
+}
+
+// =============================================================================
+// Loading / error states
+// =============================================================================
+function setLoading(on) {
+  var el = document.getElementById('loading-overlay');
+  if (on) el.classList.add('visible');
+  else el.classList.remove('visible');
+}
+
+function showError(msg) {
+  var el = document.getElementById('error-msg');
+  el.textContent = msg || '';
+  el.style.display = msg ? 'block' : 'none';
+}
+
+// =============================================================================
+// API calls
+// =============================================================================
+function fetchSnapshot(dateStr) {
+  setLoading(true);
+  showError('');
+  var url = dateStr ? '/api/snapshot?date=' + dateStr : '/api/snapshot';
+  return fetch(url)
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      snapshotData = data;
+      currentDate = dateStr || (data.timestamp ? data.timestamp.slice(0, 10) : null);
+      updateScoreBar();
+      renderSky();
+      renderSlider();
+    })
+    .catch(function(e) {
+      showError('Failed to load snapshot: ' + e.message);
+    })
+    .finally(function() {
+      setLoading(false);
+    });
+}
+
+function fetchYear(year) {
+  var url = year ? '/api/year?year=' + year : '/api/year';
+  return fetch(url)
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function(data) {
+      yearData = data;
+      renderSlider();
+    })
+    .catch(function(e) {
+      showError('Failed to load year data: ' + e.message);
+    });
+}
+
+// =============================================================================
+// Slider interaction
+// =============================================================================
+function sliderXToDate(clientX) {
+  if (!yearData || !yearData.days) return null;
+  var rect = sliderCanvas.getBoundingClientRect();
+  var x = clientX - rect.left;
+  var ratio = Math.max(0, Math.min(1, x / rect.width));
+  var idx = Math.floor(ratio * yearData.days.length);
+  var clamped = Math.max(0, Math.min(yearData.days.length - 1, idx));
+  return yearData.days[clamped].date;
+}
+
+function handleSliderMove(clientX) {
+  var dateStr = sliderXToDate(clientX);
+  if (dateStr && dateStr !== currentDate) {
+    currentDate = dateStr;
+    renderSlider();
+    fetchSnapshot(dateStr);
+  }
+}
+
+sliderCanvas.addEventListener('mousedown', function(e) {
+  sliderDragging = true;
+  handleSliderMove(e.clientX);
+});
+document.addEventListener('mousemove', function(e) {
+  if (sliderDragging) handleSliderMove(e.clientX);
+});
+document.addEventListener('mouseup', function() { sliderDragging = false; });
+
+sliderCanvas.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  handleSliderMove(e.touches[0].clientX);
+}, { passive: false });
+sliderCanvas.addEventListener('touchmove', function(e) {
+  e.preventDefault();
+  handleSliderMove(e.touches[0].clientX);
+}, { passive: false });
+
+// =============================================================================
+// Tooltip on sky canvas
+// =============================================================================
+skyCanvas.addEventListener('mousemove', function(e) {
+  var rect = skyCanvas.getBoundingClientRect();
+  var mx = e.clientX - rect.left;
+  var my = e.clientY - rect.top;
+  var tooltip = document.getElementById('tooltip');
+
+  var found = null;
+  for (var i = 0; i < planetScreenPositions.length; i++) {
+    var p = planetScreenPositions[i];
+    var dx = mx - p.x;
+    var dy = my - p.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= p.r) {
+      found = p;
+      break;
+    }
+  }
+
+  if (found) {
+    tooltip.style.display = 'block';
+    tooltip.style.left = (mx + 12) + 'px';
+    tooltip.style.top  = (my - 28) + 'px';
+    var rxText = found.retrograde ? ' [Rx]' : '';
+    tooltip.textContent = found.label + ' in ' + (found.sign || '?') + rxText;
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+skyCanvas.addEventListener('mouseleave', function() {
+  document.getElementById('tooltip').style.display = 'none';
+});
+
+// =============================================================================
+// Timeframe buttons
+// =============================================================================
+document.querySelectorAll('.tf-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    activeTf = btn.dataset.tf;
+    document.querySelectorAll('.tf-btn').forEach(function(b) {
+      b.classList.toggle('active', b === btn);
+    });
+    updateScoreBar();
+    renderSky();
+    renderSlider();
+  });
+});
+
+// =============================================================================
+// Resize handler
+// =============================================================================
+var resizeTimer = null;
+window.addEventListener('resize', function() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function() {
+    starFieldCanvas = null;
+    skyW = 0; skyH = 0; sliderW = 0;
+    renderSky();
+    renderSlider();
+  }, 100);
+});
+
+// =============================================================================
+// Init
+// =============================================================================
+// =============================================================================
+// Ambient sound
+// =============================================================================
+var audio = document.getElementById('ambient-audio');
+var soundOn = false;
+
+audio.volume = 0.35;
+
+function toggleSound() {
+  var btn = document.getElementById('sound-btn');
+  if (soundOn) {
+    audio.pause();
+    soundOn = false;
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  } else {
+    audio.play().catch(function() {});
+    soundOn = true;
+    btn.style.color = '#d4a017';
+    btn.style.borderColor = '#5050a0';
+  }
+}
+
+document.getElementById('sound-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  toggleSound();
+});
+
+// =============================================================================
+// Splash — timeframe selection + audio unlock
+// =============================================================================
+document.querySelectorAll('.splash-tf').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    // Set timeframe
+    activeTf = btn.dataset.tf;
+    document.querySelectorAll('.tf-btn').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.tf === activeTf);
+    });
+
+    // Start audio (this click is the user gesture)
+    audio.play().then(function() {
+      soundOn = true;
+      document.getElementById('sound-btn').style.color = '#d4a017';
+      document.getElementById('sound-btn').style.borderColor = '#5050a0';
+    }).catch(function() {});
+
+    // Fade out splash then remove
+    var splash = document.getElementById('splash');
+    splash.classList.add('fade-out');
+    setTimeout(function() { splash.style.display = 'none'; }, 650);
+
+    // Kick off data load
+    init();
+  });
+});
+
+// =============================================================================
+// Init (called after splash selection)
+// =============================================================================
+function init() {
+  resizeSkyCanvas();
+  resizeSliderCanvas();
+  renderSky();
+  renderSlider();
+
+  var now = new Date();
+  var year = now.getFullYear();
+
+  Promise.all([
+    fetchYear(year),
+    fetchSnapshot(null)
+  ]);
+}
+
+init();
+</script>
+</body>
+</html>

@@ -141,6 +141,57 @@
   .label-bearish { color: #f55; }
   .label-neutral  { color: #aac; }
 
+  /* ---- Slider toolbar ---- */
+  #slider-toolbar {
+    flex-shrink: 0;
+    background: #060614;
+    border-top: 1px solid #0e0e26;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    gap: 12px;
+  }
+  #goto-today-btn {
+    background: #0d0d22;
+    border: 1px solid #2a2a4a;
+    color: #d4a017;
+    font-family: monospace;
+    font-size: 0.62rem;
+    padding: 2px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+  #goto-today-btn:hover { border-color: #d4a017; }
+  #slider-hint {
+    font-size: 0.58rem;
+    color: #334;
+    letter-spacing: 0.06em;
+    flex: 1;
+    text-align: center;
+  }
+  #slider-key {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .key-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+  .key-label {
+    font-size: 0.58rem;
+    color: #446;
+    letter-spacing: 0.05em;
+    margin-right: 4px;
+  }
+
   /* ---- Slider wrap ---- */
   #slider-wrap {
     flex-shrink: 0;
@@ -307,6 +358,17 @@
   <span id="score-tf">SHORT</span>
   <span id="score-value">--</span>
   <span id="score-label">--</span>
+</div>
+
+<!-- Slider toolbar -->
+<div id="slider-toolbar">
+  <button id="goto-today-btn">Go to Today</button>
+  <span id="slider-hint">drag the timeline to travel through planetary changes</span>
+  <div id="slider-key">
+    <span class="key-swatch" style="background:#8b0000;"></span><span class="key-label">Bearish</span>
+    <span class="key-swatch" style="background:#808000;"></span><span class="key-label">Neutral</span>
+    <span class="key-swatch" style="background:#006400;"></span><span class="key-label">Bullish</span>
+  </div>
 </div>
 
 <!-- Slider canvas -->
@@ -910,7 +972,31 @@ function renderSlider() {
     sliderCtx.stroke();
   }
 
-  // Handle triangle at current day
+  // Today line — gold dashed
+  var todayStr = (function() {
+    var t = new Date();
+    return t.getFullYear() + '-' +
+      String(t.getMonth() + 1).padStart(2, '0') + '-' +
+      String(t.getDate()).padStart(2, '0');
+  })();
+  var todayIdx = -1;
+  for (var ti = 0; ti < days.length; ti++) {
+    if (days[ti].date === todayStr) { todayIdx = ti; break; }
+  }
+  if (todayIdx >= 0) {
+    var tx = ((todayIdx + 0.5) / n) * w;
+    sliderCtx.save();
+    sliderCtx.setLineDash([3, 3]);
+    sliderCtx.strokeStyle = '#d4a017';
+    sliderCtx.lineWidth = 1.5;
+    sliderCtx.beginPath();
+    sliderCtx.moveTo(tx, 0);
+    sliderCtx.lineTo(tx, h - 10);
+    sliderCtx.stroke();
+    sliderCtx.restore();
+  }
+
+  // Selected day line — white solid + triangle handle
   if (currentDate) {
     var idx = -1;
     for (var di = 0; di < days.length; di++) {
@@ -918,6 +1004,12 @@ function renderSlider() {
     }
     if (idx >= 0) {
       var hx = ((idx + 0.5) / n) * w;
+      sliderCtx.strokeStyle = 'rgba(255,255,255,0.7)';
+      sliderCtx.lineWidth = 1.5;
+      sliderCtx.beginPath();
+      sliderCtx.moveTo(hx, 0);
+      sliderCtx.lineTo(hx, h - 10);
+      sliderCtx.stroke();
       sliderCtx.fillStyle = '#ffffff';
       sliderCtx.beginPath();
       sliderCtx.moveTo(hx - 6, 0);
@@ -1099,6 +1191,14 @@ skyCanvas.addEventListener('mouseleave', function() {
 // =============================================================================
 // Timeframe buttons
 // =============================================================================
+document.getElementById('goto-today-btn').addEventListener('click', function() {
+  var today = new Date();
+  var dateStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+  fetchSnapshot(dateStr);
+});
+
 document.querySelectorAll('.tf-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     activeTf = btn.dataset.tf;

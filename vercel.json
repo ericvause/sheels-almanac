@@ -1,6 +1,12 @@
 {
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "public/index.html"
+    }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
-    { "source": "/(.*)",     "destination": "/public/$1" }
+    { "source": "/",         "destination": "/api/index" }
   ]
 }
+
